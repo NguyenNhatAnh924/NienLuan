@@ -1,0 +1,181 @@
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    phone VARCHAR(20),
+    address TEXT,
+    role ENUM('patient', 'doctor', 'reception', 'admin') NOT NULL DEFAULT 'patient',
+    create_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO users (username, name, email, password, phone, address, role)
+VALUES
+('Student', 'Student', 'student@cit.ctu.edu.vn', '$2y$10$Use.MHRzGdW3IVu0dqVNT.Wnmibj0eNPr8q7RFlclQlbAWNUQtvPu', '0358866240', NULL, 'patient'),
+('Nhật Anh', 'Nhật Anh', 'nguyennhatanhck2003@gmail.com', '$2y$10$Use.MHRzGdW3IVu0dqVNT.Wnmibj0eNPr8q7RFlclQlbAWNUQtvPu', '0973318340', NULL, 'admin'),
+('TEST02', 'TEST02', 'anh2@gmail.com', '$2y$10$Use.MHRzGdW3IVu0dqVNT.Wnmibj0eNPr8q7RFlclQlbAWNUQtvPu', '0123456789', NULL, 'patient'),
+('TEST01', 'TEST01', 'anh@gmail.com', '$2y$10$Use.MHRzGdW3IVu0dqVNT.Wnmibj0eNPr8q7RFlclQlbAWNUQtvPu', '0901234567', NULL, 'doctor'),
+('Nguyễn Lễ Tân', 'Nguyễn Lễ Tân', 'le.tan@example.com', '$2y$10$Use.MHRzGdW3IVu0dqVNT.Wnmibj0eNPr8q7RFlclQlbAWNUQtvPu', '0931122334', NULL, 'reception');
+
+CREATE TABLE doctors (
+    doctor_id INT NOT NULL PRIMARY KEY,
+    specialization VARCHAR(255) NOT NULL,
+    clinic_room VARCHAR(50),
+    working_time VARCHAR(255),
+    experience_years INT,
+    introduction TEXT,
+    FOREIGN KEY (doctor_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+INSERT INTO doctors (user_id, specialization, clinic_room, working_time, experience_years, introduction)
+VALUES 
+(4, 'Tai Mũi Họng', 'P101', 'Thứ 2 - Thứ 6; 07:00 - 16:30', 5, 'Bác sĩ có nhiều năm kinh nghiệm trong khám chữa bệnh về tai mũi họng.');
+
+CREATE TABLE appointments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    patient_id INT NOT NULL,        -- ID người bệnh (tham chiếu tới users.id)
+    doctor_id INT NOT NULL,         -- ID bác sĩ (tham chiếu tới doctors.id)
+    appointment_date DATE NOT NULL, -- Ngày khám
+    session ENUM('Sáng', 'Chiều') NOT NULL, -- Buổi khám
+    phone VARCHAR(20),              -- Số điện thoại liên hệ (có thể lấy từ users hoặc ghi lại khi đặt)
+    symptoms TEXT NOT NULL,         -- Triệu chứng mô tả
+    follow_up BOOLEAN DEFAULT FALSE, -- Có tái khám hay không
+    status ENUM('pending', 'confirmed', 'completed', 'cancelled') DEFAULT 'pending', -- Trạng thái lịch hẹn
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (patient_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (doctor_id) REFERENCES doctors(doctor_id) ON DELETE CASCADE
+);
+
+
+CREATE TABLE medicines (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,             -- Tên thuốc
+    description TEXT,                       -- Mô tả thêm (công dụng, thành phần,...)
+    dosage_form VARCHAR(100),               -- Dạng thuốc (viên nén, dung dịch, xịt mũi,...)
+    strength VARCHAR(100),                  -- Hàm lượng (vd: 500mg, 5mg/ml,...)
+    unit VARCHAR(50),                       -- Đơn vị (hộp, lọ, viên,...)
+    price DECIMAL(10,2) NOT NULL DEFAULT 0, -- Giá bán/đơn vị
+    available BOOLEAN DEFAULT TRUE          -- Còn hàng hay không
+);
+
+CREATE TABLE medical_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    appointment_id INT NOT NULL,     -- liên kết tới lịch hẹn
+    patient_id INT NOT NULL,         -- bệnh nhân
+    doctor_id INT NOT NULL,          -- bác sĩ
+    diagnosis TEXT NOT NULL,         -- chẩn đoán của bác sĩ
+    treatment_plan TEXT,             -- kế hoạch điều trị
+    notes TEXT,                     -- ghi chú bổ sung
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE,
+    FOREIGN KEY (patient_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (doctor_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE medical_history_medicines (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    medical_history_id INT NOT NULL, -- liên kết tới lịch sử bệnh án
+    medicine_id INT NOT NULL,        -- thuốc kê
+    quantity INT NOT NULL,            -- số lượng
+    dosage VARCHAR(255),              -- liều dùng (vd: "uống 2 viên/ngày")
+    notes TEXT,                      -- ghi chú thêm về thuốc
+
+    FOREIGN KEY (medical_history_id) REFERENCES medical_history(id) ON DELETE CASCADE,
+    FOREIGN KEY (medicine_id) REFERENCES medicines(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE services (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,       -- tên dịch vụ
+    description TEXT,                 -- mô tả chi tiết dịch vụ
+    price DECIMAL(10, 2) NOT NULL,   -- giá dịch vụ
+    is_active BOOLEAN DEFAULT TRUE,  -- trạng thái còn hoạt động hay không
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO services (name, description, price, is_active) VALUES
+('Khám Tai Mũi Họng', 'Khám tổng quát chuyên khoa Tai Mũi Họng', 200000, TRUE),
+('Xét nghiệm vi khuẩn tai', 'Phân tích mẫu dịch lấy từ tai để xác định vi khuẩn gây bệnh', 350000, TRUE),
+('Nội soi mũi', 'Nội soi mũi bằng ống mềm để kiểm tra tình trạng bên trong', 400000, TRUE),
+('Điều trị viêm họng', 'Tiêm thuốc và điều trị viêm họng cấp tính', 300000, TRUE),
+('Khám kiểm tra thính lực', 'Đo kiểm tra thính lực bằng thiết bị chuyên dụng', 250000, TRUE),
+('Lấy ráy tai', 'Lấy ráy tai bằng dụng cụ chuyên dụng', 100000, TRUE),
+('Nội soi thanh quản', 'Nội soi thanh quản để kiểm tra tổn thương hoặc viêm nhiễm', 450000, TRUE),
+('Phẫu thuật cắt amidan', 'Phẫu thuật cắt amidan do viêm amidan mãn tính', 5000000, TRUE);
+
+
+CREATE TABLE medical_history_services (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    medical_history_id INT NOT NULL, -- liên kết tới lịch sử bệnh án
+    service_id INT NOT NULL,         -- dịch vụ được sử dụng
+    quantity INT NOT NULL DEFAULT 1, -- số lượng dịch vụ (ví dụ: số lần thực hiện dịch vụ)
+    notes TEXT,                      -- ghi chú thêm nếu có
+
+    FOREIGN KEY (medical_history_id) REFERENCES medical_history(id) ON DELETE CASCADE,
+    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE RESTRICT
+);
+
+ALTER TABLE appointments 
+    DROP FOREIGN KEY appointments_ibfk_1, 
+    DROP COLUMN patient_id;
+
+
+CREATE TABLE guest_patients (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    address TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+ALTER TABLE guest_patients
+ADD COLUMN gender ENUM('Nam', 'Nữ') DEFAULT NULL AFTER name;
+
+ALTER TABLE appointments
+ADD COLUMN patient_type ENUM('user', 'guest') NOT NULL DEFAULT 'user',
+ADD COLUMN patient_id INT NULL,
+ADD COLUMN guest_id INT NULL;
+
+ALTER TABLE appointments
+ADD CONSTRAINT fk_appointments_patient FOREIGN KEY (patient_id) REFERENCES users(id) ON DELETE CASCADE;
+
+
+CREATE TABLE work_sessions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name ENUM('Sáng', 'Chiều', 'Tối') NOT NULL UNIQUE,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL
+);
+
+INSERT INTO work_sessions (name, start_time, end_time) VALUES
+('Sáng', '07:30:00', '11:20:00'),
+('Chiều', '13:30:00', '16:00:00'),
+('Tối', '20:00:00', '04:00:00');  -- Lưu ý giờ kết thúc sáng hôm sau
+
+CREATE TABLE doctor_work_schedules (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    doctor_id INT NOT NULL,
+    weekday ENUM('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday') DEFAULT NULL,
+    specific_date DATE DEFAULT NULL,
+    session_id INT NOT NULL, -- Liên kết tới bảng work_sessions
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (doctor_id) REFERENCES doctors(doctor_id) ON DELETE CASCADE,
+    FOREIGN KEY (session_id) REFERENCES work_sessions(id) ON DELETE RESTRICT
+);
+
+-- Giả sử 'Sáng' có id = 1 trong bảng work_sessions
+INSERT INTO doctor_work_schedules (doctor_id, weekday, session_id)
+VALUES
+(4, 'Monday', 1),
+(4, 'Wednesday', 1);

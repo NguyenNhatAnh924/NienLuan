@@ -1,0 +1,268 @@
+-- Tạo CSDL nếu chưa tồn tại
+CREATE DATABASE IF NOT EXISTS clinic_management;
+
+-- Sử dụng CSDL vừa tạo
+USE clinic_management;
+
+
+-- Xóa bảng nếu đã tồn tại để tránh lỗi khi chạy lại script
+DROP TABLE IF EXISTS medical_history, appointment, receptionist, patient, admin, doctor, users;
+
+-- Bảng users (thêm cột age)
+CREATE TABLE users (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    phone VARCHAR(20),
+    address VARCHAR(255),
+    role ENUM('doctor', 'admin', 'patient', 'receptionist') DEFAULT 'patient',
+    age INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+ALTER TABLE users MODIFY email VARCHAR(100) NULL;
+
+
+-- Bảng doctor
+CREATE TABLE doctor (
+    user_id INT UNSIGNED PRIMARY KEY,
+    specialization VARCHAR(255),
+    license_number VARCHAR(255),
+    experience FLOAT,
+    sex VARCHAR(10),
+    level VARCHAR(50),
+    degree VARCHAR(255),
+    department VARCHAR(255),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Thêm lương và trạng thái cho doctor
+ALTER TABLE doctor
+ADD COLUMN salary FLOAT DEFAULT 0,
+ADD COLUMN employment_status ENUM('working', 'resigned', 'retired') DEFAULT 'working';
+
+
+-- Bảng admin
+CREATE TABLE admin (
+    user_id INT UNSIGNED PRIMARY KEY,
+    role ENUM('super_admin', 'admin') DEFAULT 'admin',
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+ALTER TABLE admin
+ADD COLUMN salary FLOAT DEFAULT 0,
+ADD COLUMN employment_status VARCHAR(50) DEFAULT '',
+ADD COLUMN position VARCHAR(100) DEFAULT '',
+ADD COLUMN experience FLOAT DEFAULT 0,
+ADD COLUMN sex VARCHAR(10) DEFAULT '',
+ADD COLUMN level VARCHAR(50) DEFAULT '',
+ADD COLUMN degree VARCHAR(100) DEFAULT '';
+
+-- Bảng patient
+CREATE TABLE patient (
+    user_id INT UNSIGNED PRIMARY KEY,
+    medical_history TEXT,
+    date_of_birth DATE,
+    blood_type VARCHAR(10),
+    insurance_number VARCHAR(255),
+    allergies TEXT,
+    emergency_contact_name VARCHAR(100),
+    emergency_contact_phone VARCHAR(20),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Bảng receptionist
+CREATE TABLE receptionist (
+    user_id INT UNSIGNED PRIMARY KEY,
+    department VARCHAR(255),
+    shift_time VARCHAR(255),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Thêm lương và trạng thái cho receptionist
+ALTER TABLE receptionist
+ADD COLUMN salary FLOAT DEFAULT 0,
+ADD COLUMN employment_status ENUM('Đang làm việc', 'Đã nghỉ việc', 'Nghĩ hưu') DEFAULT 'Đang làm việc';
+ALTER TABLE receptionist
+ADD COLUMN degree VARCHAR(255) DEFAULT '',
+ADD COLUMN level VARCHAR(255) DEFAULT '';
+ALTER TABLE receptionist
+ADD COLUMN sex VARCHAR(10) DEFAULT '';
+
+-- Bảng appointment
+CREATE TABLE appointment (
+    appointment_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    patient_id INT UNSIGNED NOT NULL,
+    doctor_id INT UNSIGNED NOT NULL,
+    appointment_date DATETIME NOT NULL,
+    status ENUM('pending', 'completed', 'cancelled') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (patient_id) REFERENCES patient(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (doctor_id) REFERENCES doctor(user_id) ON DELETE CASCADE
+);
+ALTER TABLE appointment ADD COLUMN description TEXT AFTER status;
+
+
+-- Bảng medical_history
+CREATE TABLE medical_history (
+    history_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    patient_id INT UNSIGNED NOT NULL,
+    doctor_id INT UNSIGNED NOT NULL,
+    appointment_id INT UNSIGNED, -- Cho phép NULL vì ON DELETE SET NULL
+    diagnosis TEXT,
+    treatment_plan TEXT,
+    follow_up DATETIME,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (patient_id) REFERENCES patient(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (doctor_id) REFERENCES doctor(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (appointment_id) REFERENCES appointment(appointment_id) ON DELETE SET NULL
+);
+
+-- Xóa bảng nếu đã tồn tại để tránh lỗi khi chạy lại script
+DROP TABLE IF EXISTS testresult;
+
+-- Tạo bảng testresult liên kết với medical_history
+CREATE TABLE testresult (
+    testResultID INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    history_id INT UNSIGNED NOT NULL, -- Liên kết với bảng medical_history
+    testResultName VARCHAR(255) NOT NULL, -- Tên xét nghiệm
+    testDate DATETIME NOT NULL, -- Ngày làm xét nghiệm
+    resultDate DATETIME NOT NULL, -- Ngày trả kết quả
+    conclusion TEXT, -- Kết luận
+    notes TEXT, -- Ghi chú
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (history_id) REFERENCES medical_history(history_id) ON DELETE CASCADE
+);
+
+-- Bảng invoices (Hóa đơn)
+CREATE TABLE invoices (
+    invoices_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    paymentStatus BOOLEAN NOT NULL DEFAULT 0
+);
+
+-- Bảng services (Dịch vụ bệnh viện)
+CREATE TABLE services (
+    serviceId INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    serviceName VARCHAR(255) NOT NULL,
+    servicePrice FLOAT NOT NULL,
+    serviceDescription TEXT
+);
+
+-- Bảng invoices_details (Chi tiết hóa đơn dịch vụ)
+CREATE TABLE invoices_details (
+    invoicesDetailsId INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    invoices_id INT UNSIGNED NOT NULL,
+    serviceId INT UNSIGNED NOT NULL,
+    FOREIGN KEY (invoices_id) REFERENCES invoices(invoices_id) ON DELETE CASCADE,
+    FOREIGN KEY (serviceId) REFERENCES services(serviceId) ON DELETE CASCADE
+);
+
+-- Bảng Medication (Danh sách thuốc)
+CREATE TABLE Medication (
+    medication_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    medication_name VARCHAR(255) NOT NULL,
+    manufacturer VARCHAR(255),
+    price FLOAT NOT NULL,
+    description TEXT
+);
+
+-- Bảng prescription (Đơn thuốc)
+CREATE TABLE prescription (
+    prescription_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    prescription_name VARCHAR(255) NOT NULL,
+    dosage_instructions TEXT
+);
+
+-- Bảng details_prescription (Chi tiết đơn thuốc)
+CREATE TABLE details_prescription (
+    detailsPrescriptionID INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    prescription_id INT UNSIGNED NOT NULL,
+    medication_id INT UNSIGNED NOT NULL,
+    prescribedDose INT NOT NULL,
+    FOREIGN KEY (prescription_id) REFERENCES prescription(prescription_id) ON DELETE CASCADE,
+    FOREIGN KEY (medication_id) REFERENCES Medication(medication_id) ON DELETE CASCADE
+);
+
+
+-- Chèn dữ liệu vào bảng users
+INSERT INTO users (id, name, email, password, phone, address, role, age)
+VALUES
+(1, 'Student', 'student@cit.ctu.edu.vn', 'hashed_password_1', '0358866240', NULL, 'patient', 30),
+(2, 'Nhật Anh', 'nguyennhatanhck2003@gmail.com', 'hashed_password_2', '0973318340', NULL, 'admin', 40),
+(3, 'TEST02', 'anh2@gmail.com', 'hashed_password_3', '0123456789', NULL, 'patient', 35),
+(4, 'TEST01', 'anh@gmail.com', 'hashed_password_4', '0901234567', NULL, 'doctor', 28),
+(5, 'Nguyễn Lễ Tân', 'le.tan@example.com', 'hashed_password_5', '0931122334', NULL, 'receptionist', 25);
+
+-- Chèn dữ liệu vào bảng doctor
+INSERT INTO doctor (user_id, specialization, license_number, experience, sex, level, degree, department)
+VALUES
+(4, 'General Medicine', 'LIC12345', 5, 'Male', 'Junior', 'MBBS', 'General Clinic');
+
+-- Chèn dữ liệu vào bảng patient
+INSERT INTO patient (user_id, medical_history, date_of_birth, blood_type, insurance_number, allergies, emergency_contact_name, emergency_contact_phone)
+VALUES
+(1, 'No medical history', '1993-06-15', 'O+', 'INS001', 'None', 'Nguyễn Thị A', '0912345678'),
+(3, 'Asthma', '1990-07-21', 'A+', 'INS003', 'Pollen allergy', 'Trần Thị B', '0912345679');
+
+-- Chèn dữ liệu vào bảng admin
+INSERT INTO admin (user_id, role)
+VALUES
+(2, 'super_admin');
+
+-- Chèn dữ liệu vào bảng receptionist
+INSERT INTO receptionist (user_id, department, shift_time)
+VALUES
+(5, 'Reception', 'Morning Shift');
+
+-- Chèn dữ liệu vào bảng appointment
+INSERT INTO appointment (appointment_id, patient_id, doctor_id, appointment_date, status)
+VALUES
+(1, 1, 4, '2025-02-20 09:00:00', 'pending');
+
+-- Chèn dữ liệu vào bảng medical_history
+INSERT INTO medical_history (patient_id, doctor_id, appointment_id, diagnosis, treatment_plan, follow_up, notes)
+VALUES
+(1, 4, 1, 'No major issues', 'General check-up', '2025-03-01 09:00:00', 'Follow-up in 2 weeks');
+
+-- Chèn dữ liệu vào bảng testresult
+INSERT INTO testresult (history_id, testResultName, testDate, resultDate, conclusion, notes)
+VALUES
+(1, 'Blood Test', '2025-02-15 08:30:00', '2025-02-16 10:00:00', 'Normal blood count', 'No abnormalities detected'),
+(1, 'X-ray Chest', '2025-02-18 14:00:00', '2025-02-19 09:30:00', 'Mild lung inflammation', 'Recommend follow-up in 1 month');
+
+INSERT INTO invoices (invoices_id, paymentStatus)
+VALUES
+(1, TRUE),
+(2, FALSE);
+
+INSERT INTO services (serviceId, serviceName, servicePrice, serviceDescription)
+VALUES
+(1, 'Xét nghiệm máu', 500000, 'Kiểm tra tổng quát sức khỏe qua xét nghiệm máu'),
+(2, 'Chụp X-quang', 700000, 'Chụp X-quang kiểm tra xương và nội tạng'),
+(3, 'Khám tổng quát', 300000, 'Khám tổng quát định kỳ với bác sĩ');
+
+INSERT INTO invoices_details (invoicesDetailsId, invoices_id, serviceId)
+VALUES
+(1, 1, 1),  -- Hóa đơn 1 có dịch vụ Xét nghiệm máu
+(2, 1, 2),  -- Hóa đơn 1 có dịch vụ Chụp X-quang
+(3, 2, 3);  -- Hóa đơn 2 có dịch vụ Khám tổng quát
+
+INSERT INTO Medication (medication_id, medication_name, manufacturer, price, description)
+VALUES
+(1, 'Paracetamol', 'Mekophar', 50000, 'Thuốc giảm đau, hạ sốt'),
+(2, 'Amoxicillin', 'DHG Pharma', 70000, 'Kháng sinh trị viêm nhiễm'),
+(3, 'Vitamin C', 'Traphaco', 30000, 'Bổ sung Vitamin C, tăng cường sức đề kháng');
+
+INSERT INTO prescription (prescription_id, prescription_name, dosage_instructions)
+VALUES
+(1, 'Đơn thuốc cảm cúm', 'Uống 2 viên/ngày sau ăn'),
+(2, 'Đơn thuốc viêm họng', 'Dùng 3 viên/ngày trong 7 ngày');
+
+INSERT INTO details_prescription (detailsPrescriptionID, prescription_id, medication_id, prescribedDose)
+VALUES
+(1, 1, 1, 2),  -- Đơn thuốc 1 có Paracetamol, liều 2 viên/ngày
+(2, 2, 2, 3),  -- Đơn thuốc 2 có Amoxicillin, liều 3 viên/ngày
+(3, 2, 3, 1);  -- Đơn thuốc 2 có Vitamin C, liều 1 viên/ngày
+
