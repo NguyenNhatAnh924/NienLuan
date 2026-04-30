@@ -179,3 +179,6 @@ INSERT INTO doctor_work_schedules (doctor_id, weekday, session_id)
 VALUES
 (4, 'Monday', 1),
 (4, 'Wednesday', 1);
+
+ALTER TABLE doctors 
+ADD work_status ENUM('active', 'inactive') DEFAULT 'active';
